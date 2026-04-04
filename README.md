@@ -176,16 +176,9 @@ netsh advfirewall set allprofiles state on
 ## Repository Structure
 
 ```bash
-custom-domain-persistence/
-├── README.md                          # This comprehensive documentation
-├── custom_domain_persistence.rb       # The main Metasploit module (Ruby)
+ADWomboComboV2/
 ├── examples/                          # Usage examples and screenshots
-│   ├── example-usage.md
-│   ├── example-output.txt
 │   └── screenshot-metasploit-session.png
-├── tests/                             # Test scripts and lab setup
-│   └── test-setup.md                  # Instructions for isolated OpenStack test environment
-├── docs/                              # Additional technical documentation
-│   └── technical-details.md
-└── LICENSE                            # MSF License + educational disclaimer
+├── README.md                          # This comprehensive documentation
+└── custom_domain_persistence.rb       # The main Metasploit module (Ruby)
 ```
